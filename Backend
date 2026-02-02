@@ -1,0 +1,132 @@
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from uuid import uuid4
+import time
+
+app = FastAPI(title="OnionLink")
+
+# Serve frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+STATE = {
+    "tor": False,
+    "vpn": False,
+    "profile": str(uuid4()),
+    "last_reset": time.time()
+}
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    with open("static/index.html", "r") as f:
+        return f.read()
+
+@app.get("/api/status")
+def status():
+    return STATE
+
+@app.post("/api/tor/toggle")
+def toggle_tor():
+    STATE["tor"] = not STATE["tor"]
+    return {"tor": STATE["tor"]}
+
+@app.post("/api/vpn/toggle")
+def toggle_vpn():
+    STATE["vpn"] = not STATE["vpn"]
+    return {"vpn": STATE["vpn"]}
+
+@app.post("/api/profile/reset")
+def reset_profile():
+    STATE["profile"] = str(uuid4())
+    STATE["last_reset"] = time.time()
+    return {"profile": STATE["profile"]}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+   # Configuration for Onion Link Connector
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Server settings
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", 5000))
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
+# Tor settings
+TOR_SOCKS_PORT = int(os.getenv("TOR_SOCKS_PORT", 9050))
+TOR_CONTROL_PORT = int(os.getenv("TOR_CONTROL_PORT", 9051))
+TOR_PASSWORD = os.getenv("TOR_PASSWORD", "")
+# Utility/helper functions
+
+import requests
+import socket
+import socks
+
+def create_tor_session(socks_port=9050):
+    """Create a requests session that routes through Tor."""
+    session = requests.Session()
+    session.proxies = {
+        "http": f"socks5h://127.0.0.1:{socks_port}",
+        "https": f"socks5h://127.0.0.1:{socks_port}"
+    }
+    return session
+
+def check_onion_alive(url, session):
+    """Check if an onion URL is alive."""
+    try:
+        response = session.get(url, timeout=10)
+        return response.status_code == 200
+    except Exception:
+        return False
+  # Utility/helper functions
+
+import requests
+import socket
+import socks
+
+def create_tor_session(socks_port=9050):
+    """Create a requests session that routes through Tor."""
+    session = requests.Session()
+    session.proxies = {
+        "http": f"socks5h://127.0.0.1:{socks_port}",
+        "https": f"socks5h://127.0.0.1:{socks_port}"
+    }
+    return session
+
+def check_onion_alive(url, session):
+    """Check if an onion URL is alive."""
+    try:
+        response = session.get(url, timeout=10)
+        return response.status_code == 200
+    except Exception:
+        return False
+ # Core Onion link logic
+
+from utils import create_tor_session, check_onion_alive
+
+class OnionConnector:
+    def __init__(self, socks_port=9050):
+        self.session = create_tor_session(socks_port)
+
+    def test_onion(self, onion_url):
+        """Return True if onion link is alive, False otherwise"""
+        return check_onion_alive(onion_url, self.session)
+
+    def fetch_onion_content(self, onion_url):
+        """Return raw HTML content of onion page"""
+        try:
+            response = self.session.get(onion_url, timeout=15)
+            return response.text
+        except Exception as e:
+            return f"Error fetching content: {e}"
+           Flask==2.3.5
+requests==2.32.0
+stem==1.11.0
+python-dotenv==1.0.0
+PySocks==1.7.1
+
+          
